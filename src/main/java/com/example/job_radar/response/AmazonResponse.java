@@ -1,4 +1,4 @@
-package com.example.job_radar.Response;
+package com.example.job_radar.response;
 
 import com.example.job_radar.model.AmazonDTO;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;

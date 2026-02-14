@@ -1,7 +1,7 @@
 package com.example.job_radar.service;
 
 
-import com.example.job_radar.Response.AmazonResponse;
+import com.example.job_radar.response.AmazonResponse;
 import com.example.job_radar.model.AmazonDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
