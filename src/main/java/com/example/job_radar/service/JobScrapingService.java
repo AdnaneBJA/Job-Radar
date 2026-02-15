@@ -23,7 +23,11 @@ public class JobScrapingService {
     public List<JobPosting> scrapeAll() {
         List<JobPosting> newJobs = new ArrayList<>();
         for (JobScraper scraper : scrapers) {
-            newJobs.addAll(scraper.scrape());
+            for (JobPosting job : scraper.scrape()) {
+                if (!jobRepository.existsByTitleAndCompany(job.getTitle(), job.getCompany())) {
+                    newJobs.add(job);
+                }
+            }
         }
         jobRepository.saveAll(newJobs);
         return newJobs;
