@@ -20,6 +20,8 @@ public class AmazonScraper implements JobScraper {
     @Autowired
     private JobMapper jobMapper;
 
+    private final String COMPANY_NAME = "HubSpot";
+
     @Override
     public List<JobPosting> scrape() {
         AmazonResponse response = webClient.get()
