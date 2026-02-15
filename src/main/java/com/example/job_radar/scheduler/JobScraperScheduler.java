@@ -1,5 +1,6 @@
 package com.example.job_radar.scheduler;
 
+import com.example.job_radar.service.JobScrapingService;
 import com.example.job_radar.service.NotificationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,10 +15,14 @@ public class JobScraperScheduler {
     @Autowired
     private NotificationService notificationService;
 
+    @Autowired
+    private JobScrapingService jobScrapingService;
+
     @Scheduled(fixedRate = 1800000)
     public void scrapAndNotify() {
         log.info("STARTING SCRAP CYCLE");
 
+        jobScrapingService.scrapeAll();
         notificationService.sendAllJobsSummary();
 
         log.info("THE EMAIL WAS SENT WITH ALL JOBS DETAILS");

@@ -1,6 +1,5 @@
 package com.example.job_radar.controller;
 
-import com.example.job_radar.model.AmazonDTO;
 import com.example.job_radar.model.JobPosting;
 import com.example.job_radar.service.JobScrapingService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,8 +13,8 @@ public class JobController {
     @Autowired
     JobScrapingService jobScrapingService;
 
-    @GetMapping("/amazon")
-    public List<JobPosting> getAllAmazonJobs() {
-       return jobScrapingService.getAllAmazonInternships();
+    @GetMapping("/jobs")
+    public List<JobPosting> getAllJobs() {
+        return jobScrapingService.scrapeAll();
     }
 }

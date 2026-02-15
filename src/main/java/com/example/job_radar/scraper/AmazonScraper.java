@@ -1,7 +1,8 @@
 package com.example.job_radar.scraper;
 
 
-import com.example.job_radar.model.AmazonDTO;
+import com.example.job_radar.mapper.JobMapper;
+import com.example.job_radar.model.JobPosting;
 import com.example.job_radar.response.AmazonResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -10,12 +11,16 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.util.List;
 
 @Component
-public class AmazonScraper {
+public class AmazonScraper implements JobScraper {
 
     @Autowired
     private WebClient webClient;
 
-    public List<AmazonDTO> getAllAmazonInternships() {
+    @Autowired
+    private JobMapper jobMapper;
+
+    @Override
+    public List<JobPosting> scrape() {
         AmazonResponse response = webClient.get()
                 .uri("https://www.amazon.jobs/en/search.json", uriBuilder -> uriBuilder
                         .queryParam("base_query", "software intern")
@@ -30,6 +35,8 @@ public class AmazonScraper {
                 .block();
 
         assert response != null;
-        return response.getJobs();
+        return response.getJobs().stream()
+                .map(jobMapper::fromAmazon)
+                .toList();
     }
 }
