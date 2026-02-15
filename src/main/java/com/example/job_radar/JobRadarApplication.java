@@ -1,7 +1,9 @@
 package com.example.job_radar;
 
 import com.example.job_radar.model.AmazonDTO;
+import com.example.job_radar.model.JobPosting;
 import com.example.job_radar.service.JobScrapingService;
+import com.example.job_radar.service.NotificationService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -21,10 +23,9 @@ public class JobRadarApplication {
 
 
 	@Bean
-	CommandLineRunner run(JobScrapingService service) {
+	CommandLineRunner run(NotificationService service) {
 		return  args -> {
-			List<AmazonDTO> list  = service.getAllAmazonInternships();
-			System.out.println("Job: " + list);
+			//service.sendAllJobsSummary();
 		};
 	}
 

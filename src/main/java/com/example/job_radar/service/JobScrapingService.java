@@ -1,42 +1,52 @@
 package com.example.job_radar.service;
 
 
+import com.example.job_radar.mapper.JobMapper;
+import com.example.job_radar.model.JobPosting;
+import com.example.job_radar.repository.JobRepository;
 import com.example.job_radar.response.AmazonResponse;
 import com.example.job_radar.model.AmazonDTO;
+import com.example.job_radar.scraper.AmazonScraper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class JobScrapingService {
 
-    private WebClient webClient;
-    private ObjectMapper objectMapper;
+    private final AmazonScraper amazonScraper;
+    private JobRepository jobRepository;
+    private JobMapper jobMapper;
 
     @Autowired
-    public JobScrapingService(WebClient webClient, ObjectMapper objectMapper) {
-        this.webClient = webClient;
-        this.objectMapper = objectMapper;
+    public JobScrapingService(AmazonScraper amazonScraper, WebClient webClient, JobRepository jobRepository, JobMapper jobMapper) {
+        this.amazonScraper = amazonScraper;
+        this.jobRepository = jobRepository;
+        this.jobMapper = jobMapper;
+    }
+
+    public List<JobPosting> scrapeAll() {
+        List<JobPosting> newJobs = new ArrayList<>();
+
+        newJobs.addAll(getAllAmazonInternships());
+        // newJobs.addAll(scrapeStripe());
+        // newJobs.addAll(scrapeGoogle());
+
+        return newJobs;
     }
 
 
-    public List<AmazonDTO> getAllAmazonInternships() {
-        AmazonResponse response = webClient.get()
-                .uri("https://www.amazon.jobs/en/search.json", uriBuilder -> uriBuilder
-                        .queryParam("base_query", "software intern")
-                        .queryParam("normalized_country_code[]", "USA")
-                        .queryParam("normalized_country_code[]", "CAN")
-                        .queryParam("result_limit", "25")
-                        .queryParam("offset", "0")
-                        .queryParam("sort", "relevant")
-                        .build())
-                .retrieve()
-                .bodyToMono(AmazonResponse.class)
-                .block();
-
-        return response.getJobs();
+    public List<JobPosting> getAllAmazonInternships() {
+        List<JobPosting> newJobs = new ArrayList<>();
+        for (AmazonDTO dto : amazonScraper.getAllAmazonInternships()) {
+            JobPosting job = jobMapper.fromAmazon(dto);
+            jobRepository.save(job);
+            newJobs.add(job);
+        }
+        return newJobs;
     }
 }

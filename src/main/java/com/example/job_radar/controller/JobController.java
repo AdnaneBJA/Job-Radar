@@ -1,6 +1,7 @@
 package com.example.job_radar.controller;
 
 import com.example.job_radar.model.AmazonDTO;
+import com.example.job_radar.model.JobPosting;
 import com.example.job_radar.service.JobScrapingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,7 +15,7 @@ public class JobController {
     JobScrapingService jobScrapingService;
 
     @GetMapping("/amazon")
-    public List<AmazonDTO> getAllAmazonJobs() {
+    public List<JobPosting> getAllAmazonJobs() {
        return jobScrapingService.getAllAmazonInternships();
     }
 }
