@@ -1,4 +1,4 @@
-package com.example.job_radar.scraper;
+package com.example.job_radar.scraper.workday;
 
 import com.example.job_radar.model.JobPosting;
 import org.springframework.stereotype.Component;

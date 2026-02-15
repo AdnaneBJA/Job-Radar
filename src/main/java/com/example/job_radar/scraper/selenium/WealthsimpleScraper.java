@@ -1,6 +1,7 @@
-package com.example.job_radar.scraper;
+package com.example.job_radar.scraper.selenium;
 
 import com.example.job_radar.model.JobPosting;
+import com.example.job_radar.scraper.JobScraper;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -18,7 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
-public class WealthsimpleScraper implements JobScraper {
+public class WealthsimpleScraper extends SeleniumScraper {
 
     private static final Logger log = LoggerFactory.getLogger(WealthsimpleScraper.class);
 
@@ -79,15 +80,4 @@ public class WealthsimpleScraper implements JobScraper {
         return jobs;
     }
 
-    private WebDriver createDriver() {
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless=new");
-        options.addArguments("--no-sandbox");
-        options.addArguments("--disable-dev-shm-usage");
-        options.addArguments("--disable-gpu");
-        options.addArguments("--window-size=1920,1080");
-        options.addArguments("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                + "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
-        return new ChromeDriver(options);
-    }
 }

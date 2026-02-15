@@ -1,6 +1,7 @@
-package com.example.job_radar.scraper;
+package com.example.job_radar.scraper.selenium;
 
 import com.example.job_radar.model.JobPosting;
+import com.example.job_radar.scraper.JobScraper;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -17,7 +18,7 @@ import java.time.LocalDate;
 import java.util.*;
 
 @Component
-public class GoogleScraper implements JobScraper {
+public class GoogleScraper extends SeleniumScraper {
 
     private static final Logger log = LoggerFactory.getLogger(GoogleScraper.class);
 
@@ -38,7 +39,7 @@ public class GoogleScraper implements JobScraper {
 
             wait.until(ExpectedConditions.presenceOfElementLocated(
                     By.cssSelector("li.lLd3Je")));
-            Thread.sleep(2000);
+            Thread.sleep(3000);
 
             while (true) {
                 List<JobPosting> pageJobs = scrapeCurrentPage(driver);
@@ -124,17 +125,5 @@ public class GoogleScraper implements JobScraper {
             log.info("[Google] No more pages to navigate");
             return false;
         }
-    }
-
-    private WebDriver createDriver() {
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless=new");
-        options.addArguments("--no-sandbox");
-        options.addArguments("--disable-dev-shm-usage");
-        options.addArguments("--disable-gpu");
-        options.addArguments("--window-size=1920,1080");
-        options.addArguments("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                + "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
-        return new ChromeDriver(options);
     }
 }

@@ -1,9 +1,10 @@
-package com.example.job_radar.scraper;
+package com.example.job_radar.scraper.rest;
 
 
 import com.example.job_radar.mapper.JobMapper;
 import com.example.job_radar.model.JobPosting;
 import com.example.job_radar.response.AmazonResponse;
+import com.example.job_radar.scraper.JobScraper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;

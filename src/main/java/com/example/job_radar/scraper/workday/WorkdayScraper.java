@@ -1,6 +1,7 @@
-package com.example.job_radar.scraper;
+package com.example.job_radar.scraper.workday;
 
 import com.example.job_radar.model.JobPosting;
+import com.example.job_radar.scraper.JobScraper;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
