@@ -1,9 +1,6 @@
 package com.example.job_radar.mapper;
 
-import com.example.job_radar.model.AmazonDTO;
-import com.example.job_radar.model.HubSpotDTO;
-import com.example.job_radar.model.JobPosting;
-import com.example.job_radar.model.MicrosoftDTO;
+import com.example.job_radar.model.*;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -34,6 +31,15 @@ public class JobMapper {
         job.setTitle(dto.getPositionName());
         job.setDate(LocalDate.now().toString());
         job.setLocation(dto.getLocation()[0]);
+        return job;
+    }
+
+    public JobPosting fromMorganStanley(MorganStanleyDTO dto) {
+        JobPosting job = new JobPosting();
+        job.setCompany("Morgan Stanley");
+        job.setTitle(dto.getTitle());
+        job.setDate(LocalDate.now().toString());
+        job.setLocation(dto.getLocation());
         return job;
     }
 }
