@@ -42,4 +42,15 @@ public class JobMapper {
         job.setLocation(dto.getLocation());
         return job;
     }
+
+    public JobPosting fromMongoDb(MongoDbDTO dto) {
+        JobPosting job = new JobPosting();
+        job.setCompany("MongoDB");
+        job.setTitle(dto.getTitle());
+        job.setDate(dto.getFirstPublished() != null
+                ? dto.getFirstPublished().substring(0, 10)
+                : LocalDate.now().toString());
+        job.setLocation(dto.getLocation() != null ? dto.getLocation().getName() : "");
+        return job;
+    }
 }
