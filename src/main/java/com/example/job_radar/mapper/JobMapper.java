@@ -53,4 +53,13 @@ public class JobMapper {
         job.setLocation(dto.getLocation() != null ? dto.getLocation().getName() : "");
         return job;
     }
+
+    public JobPosting fromNokia(NokiaDTO dto) {
+        JobPosting job = new JobPosting();
+        job.setCompany("Nokia");
+        job.setTitle(dto.getTitle());
+        job.setDate(dto.getDate());
+        job.setLocation(dto.getLocation());
+        return job;
+    }
 }
