@@ -161,16 +161,36 @@ public class CiscoScraper extends SeleniumScraper {
                 return false;
             }
 
+            // Record current page before navigating so we can detect if it didn't advance
+            String currentPage = getCurrentPageNumber(driver);
+
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", nextLink);
             Thread.sleep(3000);
 
             wait.until(ExpectedConditions.presenceOfElementLocated(
                     By.cssSelector("a[data-ph-at-id='job-link']")));
 
+            // If page number didn't change, we're on the last page (aria-disabled not set by site)
+            String newPage = getCurrentPageNumber(driver);
+            if (currentPage != null && currentPage.equals(newPage)) {
+                log.info("[Cisco] Page did not advance (still on {}), stopping pagination", currentPage);
+                return false;
+            }
+
             return true;
         } catch (Exception e) {
             log.info("[Cisco] No more pages to navigate");
             return false;
+        }
+    }
+
+    private String getCurrentPageNumber(WebDriver driver) {
+        try {
+            WebElement current = driver.findElement(
+                    By.cssSelector("a[aria-current='page'], button[aria-current='page']"));
+            return current.getText().trim();
+        } catch (Exception e) {
+            return null;
         }
     }
 }

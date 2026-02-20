@@ -1,10 +1,7 @@
 package com.example.job_radar.scraper.selenium;
 
 import com.example.job_radar.model.JobPosting;
-import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
@@ -50,9 +47,13 @@ public class SalesforceScraper extends SeleniumScraper {
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", searchBtn);
             Thread.sleep(5000);
 
-            // Wait for job cards to load
-            wait.until(ExpectedConditions.presenceOfElementLocated(
-                    By.cssSelector("div.card")));
+            try {
+                wait.until(ExpectedConditions.presenceOfElementLocated(
+                        By.cssSelector("div.card")));
+            } catch (TimeoutException e) {
+                log.info("[Salesforce] No job cards found after filtering.");
+                return jobs;
+            }
 
             // Scrape all pages
             while (true) {

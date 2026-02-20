@@ -23,7 +23,7 @@ public class WealthsimpleScraper extends SeleniumScraper {
 
     private static final Logger log = LoggerFactory.getLogger(WealthsimpleScraper.class);
 
-    private static final String BASE_URL = "https://jobs.lever.co/wealthsimple?location=Canada";
+    private static final String BASE_URL = "https://jobs.lever.co/wealthsimple?commitment=Intern";
     private static final String COMPANY = "Wealthsimple";
 
     @Override

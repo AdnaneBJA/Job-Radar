@@ -26,8 +26,7 @@ public class AmazonScraper implements JobScraper {
     public List<JobPosting> scrape() {
         AmazonResponse response = webClient.get()
                 .uri("https://www.amazon.jobs/en/search.json", uriBuilder -> uriBuilder
-                        .queryParam("base_query", "software intern")
-                        .queryParam("normalized_country_code[]", "USA")
+                        .queryParam("base_query", "intern")
                         .queryParam("normalized_country_code[]", "CAN")
                         .queryParam("result_limit", "25")
                         .queryParam("offset", "0")
@@ -39,7 +38,7 @@ public class AmazonScraper implements JobScraper {
 
         assert response != null;
         return response.getJobs().stream()
-                .map(jobMapper::fromAmazon)
+                .map(jobMapper::fromAmazon).filter(job -> !job.getTitle().toUpperCase().contains("PHD"))
                 .toList();
     }
 }
