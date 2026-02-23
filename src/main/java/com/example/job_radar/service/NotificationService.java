@@ -68,7 +68,13 @@ public class NotificationService {
         Map<String, List<JobPosting>> byCompany = jobs.stream()
                 .collect(Collectors.groupingBy(JobPosting::getCompany));
 
-        for (Map.Entry<String, List<JobPosting>> entry : byCompany.entrySet()) {
+        for (Map.Entry<String, List<JobPosting>> entry : byCompany.entrySet().stream()
+                .sorted((a, b) -> {
+                    boolean aHasNew = a.getValue().stream().anyMatch(j -> newJobIds.contains(j.getId()));
+                    boolean bHasNew = b.getValue().stream().anyMatch(j -> newJobIds.contains(j.getId()));
+                    if (aHasNew != bHasNew) return aHasNew ? -1 : 1;
+                    return a.getKey().compareTo(b.getKey());
+                }).toList()) {
             long newInCompany = entry.getValue().stream()
                     .filter(j -> newJobIds.contains(j.getId()))
                     .count();

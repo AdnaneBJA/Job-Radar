@@ -69,7 +69,9 @@ public class AmdScraper extends SeleniumScraper {
             // Scrape all pages
             while (true) {
                 List<JobPosting> pageJobs = scrapeCurrentPage(driver);
-                jobs.addAll(pageJobs);
+                List<JobPosting> filteredJobs = pageJobs.stream().filter(job -> job.getTitle().toUpperCase().contains("INTERN")).toList();
+
+                jobs.addAll(filteredJobs);
                 log.info("[AMD] Scraped {} jobs from current page (total so far: {})",
                         pageJobs.size(), jobs.size());
 

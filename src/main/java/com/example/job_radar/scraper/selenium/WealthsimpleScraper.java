@@ -23,7 +23,7 @@ public class WealthsimpleScraper extends SeleniumScraper {
 
     private static final Logger log = LoggerFactory.getLogger(WealthsimpleScraper.class);
 
-    private static final String BASE_URL = "https://jobs.lever.co/wealthsimple?commitment=Intern";
+    private static final String BASE_URL = "https://jobs.ashbyhq.com/wealthsimple?employmentType=Intern";
     private static final String COMPANY = "Wealthsimple";
 
     @Override
@@ -35,34 +35,34 @@ public class WealthsimpleScraper extends SeleniumScraper {
             driver.get(BASE_URL);
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
 
-            wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(".posting")));
+            wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(".ashby-job-posting-brief")));
             Thread.sleep(2000);
 
-            // Lever loads all jobs on a single page (no pagination)
-            List<WebElement> postings = driver.findElements(By.cssSelector(".posting"));
+            List<WebElement> postings = driver.findElements(By.cssSelector(".ashby-job-posting-brief"));
 
             for (WebElement posting : postings) {
                 try {
-                    WebElement titleEl = posting.findElement(By.cssSelector("h5[data-qa='posting-name']"));
+                    WebElement titleEl = posting.findElement(By.cssSelector(".ashby-job-posting-brief-title"));
                     String title = titleEl.getText().trim();
 
                     JobPosting job = new JobPosting();
                     job.setCompany(COMPANY);
                     job.setTitle(title);
 
-                    // Location
-                    List<WebElement> locationEls = posting.findElements(
-                            By.cssSelector("span.sort-by-location"));
-                    if (!locationEls.isEmpty()) {
-                        job.setLocation(locationEls.get(0).getText().trim());
+                    // Details paragraph format: "Department • Location • Type • Mode"
+                    List<WebElement> detailEls = posting.findElements(
+                            By.cssSelector(".ashby-job-posting-brief-details p"));
+                    if (!detailEls.isEmpty()) {
+                        String[] parts = detailEls.get(0).getText().split("•");
+                        job.setLocation(parts.length > 1 ? parts[1].trim() : "");
                     } else {
                         job.setLocation("");
                     }
 
-                    // Lever doesn't show posted date on listings
+                    // Ashby doesn't show posted date on listings
                     job.setDate(LocalDate.now().toString());
 
-                    if (!job.getTitle().isEmpty() && job.getTitle().toUpperCase().contains("INTERN")) {
+                    if (!title.isEmpty()) {
                         jobs.add(job);
                     }
                 } catch (Exception e) {
@@ -72,7 +72,7 @@ public class WealthsimpleScraper extends SeleniumScraper {
 
             log.info("[Wealthsimple] Scraping complete. Total jobs: {}", jobs.size());
         } catch (Exception e) {
-            log.error("[Wealthsimple] Error scraping Lever jobs", e);
+            log.error("[Wealthsimple] Error scraping Ashby jobs", e);
         } finally {
             driver.quit();
         }

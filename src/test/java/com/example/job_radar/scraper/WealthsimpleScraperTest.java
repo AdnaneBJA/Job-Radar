@@ -20,17 +20,16 @@ class WealthsimpleScraperTest {
         WebDriver driver = new ChromeDriver(options);
 
         try {
-            driver.get("https://jobs.lever.co/wealthsimple?location=Canada");
+            driver.get("https://jobs.ashbyhq.com/wealthsimple?employmentType=Intern");
             Thread.sleep(5000);
 
             System.out.println("Page title: " + driver.getTitle());
 
-            // Try common Lever selectors
+            // Try common Ashby selectors
             String[] selectors = {
-                    ".posting", "a.posting-title", ".posting-name",
-                    "h5", ".sort-by-team", ".posting-category",
-                    "[data-qa]", ".postings-group", ".posting-apply",
-                    "a[href*='/wealthsimple/']"
+                    ".ashby-job-posting-brief", ".ashby-job-posting-brief-title",
+                    ".ashby-job-posting-brief-details", "h3", "[class*='jobPosting']",
+                    "[class*='container']", "[class*='title']", "[class*='details']"
             };
 
             for (String sel : selectors) {
