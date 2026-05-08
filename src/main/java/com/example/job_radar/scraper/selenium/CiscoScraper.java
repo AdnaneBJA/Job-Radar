@@ -14,7 +14,9 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Component
 public class CiscoScraper extends SeleniumScraper {
@@ -22,7 +24,7 @@ public class CiscoScraper extends SeleniumScraper {
     private static final Logger log = LoggerFactory.getLogger(CiscoScraper.class);
 
     private static final String BASE_URL =
-            "https://careers.cisco.com/global/en/search-results";
+            "https://careers.cisco.com/global/en/search-results?s=1";
 
     private static final String COMPANY = "Cisco";
 
@@ -42,25 +44,33 @@ public class CiscoScraper extends SeleniumScraper {
             clickCheckbox(driver, wait, "country_phs_Canada");
             Thread.sleep(3000);
 
-            // 2. Expand Experience Level accordion and check "Co-Op" and "Intern"
-            expandAccordion(driver, "ExperienceLevelAccordion");
-            Thread.sleep(1000);
-            clickCheckbox(driver, wait, "raasJobRequisitionType_phs_Co-Op");
-            Thread.sleep(3000);
-            clickCheckbox(driver, wait, "raasJobRequisitionType_phs_Intern");
-            Thread.sleep(3000);
-
             // Scrape all pages
-            while (true) {
+            Set<String> seen = new HashSet<>();
+            int maxPages = 50;
+            int pageCount = 0;
+            do {
+                pageCount++;
                 List<JobPosting> pageJobs = scrapeCurrentPage(driver);
-                jobs.addAll(pageJobs);
-                log.info("[Cisco] Scraped {} jobs from current page (total so far: {})",
-                        pageJobs.size(), jobs.size());
+                int added = 0;
+                for (JobPosting job : pageJobs) {
+                    String key = job.getTitle() + "|" + job.getLocation();
+                    if (seen.add(key)) {
+                        jobs.add(job);
+                        added++;
+                    }
+                }
+                log.info("[Cisco] Scraped {} jobs from current page ({} new, total so far: {})",
+                        pageJobs.size(), added, jobs.size());
 
-                if (!goToNextPage(driver, wait)) {
+                if (added == 0) {
+                    log.info("[Cisco] No new jobs on page {}, stopping pagination", pageCount);
                     break;
                 }
-            }
+                if (pageCount >= maxPages) {
+                    log.warn("[Cisco] Reached max page cap ({}), stopping pagination", maxPages);
+                    break;
+                }
+            } while (goToNextPage(driver, wait));
 
             log.info("[Cisco] Scraping complete. Total jobs: {}", jobs.size());
         } catch (Exception e) {

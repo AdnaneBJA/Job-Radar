@@ -104,6 +104,94 @@ class RbcScraperTest {
     }
 
     @Test
+    void debugUrlAfterFilters() throws Exception {
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless=new", "--no-sandbox", "--disable-gpu", "--window-size=1920,1080");
+        WebDriver driver = new ChromeDriver(options);
+
+        try {
+            driver.get("https://jobs.rbc.com/ca/en/search-results?s=1");
+            Thread.sleep(8000);
+            JavascriptExecutor js = (JavascriptExecutor) driver;
+
+            // Expand Country accordion and click Canada
+            List<WebElement> ca = driver.findElements(By.id("CountryAccordion"));
+            if (!ca.isEmpty()) {
+                List<WebElement> plus = ca.get(0).findElements(By.cssSelector("use[href='#phw-cns-icon-plus']"));
+                if (!plus.isEmpty()) {
+                    js.executeScript("arguments[0].click();", ca.get(0));
+                    Thread.sleep(1500);
+                }
+            }
+            List<WebElement> canadaCb = driver.findElements(
+                    By.xpath("//input[@type='checkbox' and starts-with(@aria-label, 'Canada')]"));
+            if (!canadaCb.isEmpty()) {
+                js.executeScript("arguments[0].click();", canadaCb.get(0));
+                Thread.sleep(5000);
+            }
+            System.out.println("URL after Canada: " + driver.getCurrentUrl());
+
+            // Expand Job Type accordion and click Student/Coop
+            List<WebElement> jta = driver.findElements(By.id("JobTypeAccordion"));
+            if (!jta.isEmpty()) {
+                List<WebElement> plus = jta.get(0).findElements(By.cssSelector("use[href='#phw-cns-icon-plus']"));
+                if (!plus.isEmpty()) {
+                    js.executeScript("arguments[0].click();", jta.get(0));
+                    Thread.sleep(1500);
+                }
+            }
+            List<WebElement> coopCb = driver.findElements(
+                    By.xpath("//input[@type='checkbox' and starts-with(@aria-label, 'Student/Coop')]"));
+            if (!coopCb.isEmpty()) {
+                js.executeScript("arguments[0].click();", coopCb.get(0));
+                Thread.sleep(5000);
+            }
+            System.out.println("URL after Student/Coop: " + driver.getCurrentUrl());
+
+            // Verify checkbox states
+            List<WebElement> canadaCheck = driver.findElements(
+                    By.xpath("//input[@type='checkbox' and starts-with(@aria-label, 'Canada')]"));
+            if (!canadaCheck.isEmpty()) {
+                System.out.println("Canada aria-checked: " + canadaCheck.get(0).getAttribute("aria-checked")
+                        + " | checked: " + canadaCheck.get(0).getAttribute("checked")
+                        + " | selected: " + canadaCheck.get(0).isSelected());
+            }
+            List<WebElement> coopCheck = driver.findElements(
+                    By.xpath("//input[@type='checkbox' and starts-with(@aria-label, 'Student/Coop')]"));
+            if (!coopCheck.isEmpty()) {
+                System.out.println("Student/Coop aria-checked: " + coopCheck.get(0).getAttribute("aria-checked")
+                        + " | checked: " + coopCheck.get(0).getAttribute("checked")
+                        + " | selected: " + coopCheck.get(0).isSelected());
+            }
+
+            // Count jobs visible
+            List<WebElement> jobLinks = driver.findElements(By.cssSelector("a[data-ph-at-id='job-link']"));
+            System.out.println("Job links on page after filters: " + jobLinks.size());
+
+            // First few job locations to verify filter
+            for (int i = 0; i < Math.min(5, jobLinks.size()); i++) {
+                String title = jobLinks.get(i).getAttribute("data-ph-at-job-title-text");
+                System.out.println("  job[" + i + "] title: " + title);
+            }
+
+            // Find element with total count text like "X results" or "X jobs"
+            List<WebElement> counts = driver.findElements(
+                    By.xpath("//*[contains(text(),'results') or contains(text(),'jobs') or contains(text(),'Results') or contains(text(),'Jobs')]"));
+            System.out.println("\n=== Total count candidates ===");
+            int printed = 0;
+            for (WebElement el : counts) {
+                String text = el.getText().trim();
+                if (text.length() > 0 && text.length() < 100 && (text.matches(".*\\d+.*"))) {
+                    System.out.println("  '" + text + "'");
+                    if (++printed > 15) break;
+                }
+            }
+        } finally {
+            driver.quit();
+        }
+    }
+
+    @Test
     void testScrape() {
         RbcScraper scraper = new RbcScraper();
         List<JobPosting> jobs = scraper.scrape();

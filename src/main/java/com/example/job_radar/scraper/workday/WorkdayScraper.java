@@ -35,11 +35,18 @@ public abstract class WorkdayScraper implements JobScraper {
 
         try {
             driver.get(getBaseUrl());
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
 
-            // Wait for the job list to load
-            wait.until(ExpectedConditions.presenceOfElementLocated(
-                    By.cssSelector("[data-automation-id='jobResults']")));
+            // Wait for the job list to load, retry once with page refresh if needed
+            try {
+                wait.until(ExpectedConditions.presenceOfElementLocated(
+                        By.cssSelector("[data-automation-id='jobResults']")));
+            } catch (Exception e) {
+                log.warn("[{}] First load attempt failed, refreshing page...", getCompanyName());
+                driver.navigate().refresh();
+                wait.until(ExpectedConditions.presenceOfElementLocated(
+                        By.cssSelector("[data-automation-id='jobResults']")));
+            }
 
             // Allow extra time for all items to render
             Thread.sleep(2000);

@@ -38,21 +38,28 @@ public class RbcScraper extends SeleniumScraper {
 
             JavascriptExecutor js = (JavascriptExecutor) driver;
 
-            // 1. Expand Job Type accordion and check "Student/Coop (Fixed Term)"
-            expandAccordion(driver, js, "JobTypeAccordion");
-            Thread.sleep(1000);
-            clickCheckboxByAriaLabel(driver, js, wait, "Student/Coop");
-            Thread.sleep(3000);
-
-            // 2. Expand Country accordion and check "Canada"
+            // 1. Expand Country accordion and check "Canada"
             expandAccordion(driver, js, "CountryAccordion");
             Thread.sleep(1000);
-            clickCheckboxByAriaLabel(driver, js, wait, "Canada");
+            boolean canadaOk = clickCheckboxByAriaLabel(driver, js, wait, "Canada");
             Thread.sleep(3000);
 
-            // Scrape all pages
+            // 2. Expand Job Type accordion and check "Student/Coop (Fixed Term)"
+            expandAccordion(driver, js, "JobTypeAccordion");
+            Thread.sleep(1000);
+            boolean coopOk = clickCheckboxByAriaLabel(driver, js, wait, "Student/Coop");
+            Thread.sleep(3000);
+
+            if (!canadaOk || !coopOk) {
+                log.error("[RBC] Filters did not apply (Canada={}, Student/Coop={}), aborting scrape to avoid flooding DB with unfiltered jobs",
+                        canadaOk, coopOk);
+                return jobs;
+            }
+
+            // Safety cap — Canada + Student/Coop should yield ~4 pages (~40 jobs)
+            int maxPages = 15;
             int currentPage = 1;
-            while (true) {
+            while (currentPage <= maxPages) {
                 List<JobPosting> pageJobs = scrapeCurrentPage(driver);
                 jobs.addAll(pageJobs);
                 log.info("[RBC] Scraped {} jobs from current page (total so far: {})",
@@ -62,6 +69,9 @@ public class RbcScraper extends SeleniumScraper {
                 if (!goToNextPage(driver, js, wait, currentPage)) {
                     break;
                 }
+            }
+            if (currentPage > maxPages) {
+                log.warn("[RBC] Hit max page cap ({}); filters may have silently failed", maxPages);
             }
 
             log.info("[RBC] Scraping complete. Total jobs: {}", jobs.size());
@@ -87,16 +97,32 @@ public class RbcScraper extends SeleniumScraper {
         }
     }
 
-    private void clickCheckboxByAriaLabel(WebDriver driver, JavascriptExecutor js,
-                                          WebDriverWait wait, String labelPrefix) {
-        try {
-            WebElement checkbox = wait.until(ExpectedConditions.presenceOfElementLocated(
-                    By.xpath("//input[@type='checkbox' and starts-with(@aria-label, '" + labelPrefix + "')]")));
-            js.executeScript("arguments[0].click();", checkbox);
-            log.info("[RBC] Checked '{}'", labelPrefix);
-        } catch (Exception e) {
-            log.warn("[RBC] Could not click checkbox '{}': {}", labelPrefix, e.getMessage());
+    private boolean clickCheckboxByAriaLabel(WebDriver driver, JavascriptExecutor js,
+                                             WebDriverWait wait, String labelPrefix) {
+        By locator = By.xpath("//input[@type='checkbox' and starts-with(@aria-label, '"
+                + labelPrefix + "')]");
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                WebElement checkbox = wait.until(ExpectedConditions.presenceOfElementLocated(locator));
+                js.executeScript("arguments[0].scrollIntoView({block:'center'});", checkbox);
+                Thread.sleep(500);
+                if (checkbox.isSelected()) {
+                    log.info("[RBC] '{}' already selected", labelPrefix);
+                    return true;
+                }
+                js.executeScript("arguments[0].click();", checkbox);
+                Thread.sleep(2000);
+                WebElement recheck = driver.findElement(locator);
+                if (recheck.isSelected()) {
+                    log.info("[RBC] Checked '{}' (attempt {})", labelPrefix, attempt);
+                    return true;
+                }
+                log.warn("[RBC] '{}' click did not register (attempt {})", labelPrefix, attempt);
+            } catch (Exception e) {
+                log.warn("[RBC] Error clicking '{}' (attempt {}): {}", labelPrefix, attempt, e.getMessage());
+            }
         }
+        return false;
     }
 
     private List<JobPosting> scrapeCurrentPage(WebDriver driver) {

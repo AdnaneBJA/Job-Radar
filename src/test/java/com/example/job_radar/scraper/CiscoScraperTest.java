@@ -55,13 +55,23 @@ class CiscoScraperTest {
             // Check all checkboxes or inputs on the page
             List<WebElement> checkboxes = driver.findElements(By.cssSelector("input[type='checkbox']"));
             System.out.println("\n=== Checkboxes: " + checkboxes.size() + " ===");
-            for (int i = 0; i < Math.min(30, checkboxes.size()); i++) {
+            // Dump only country checkboxes
+            System.out.println("--- country_phs_* checkboxes ---");
+            for (int i = 0; i < checkboxes.size(); i++) {
                 String id = checkboxes.get(i).getAttribute("id");
-                String name = checkboxes.get(i).getAttribute("name");
-                String value = checkboxes.get(i).getAttribute("value");
+                if (id != null && id.startsWith("country_phs_")) {
+                    String ariaLabel = checkboxes.get(i).getAttribute("aria-label");
+                    System.out.printf("  checkbox[%d] id='%s' aria-label='%s'%n", i, id, ariaLabel);
+                }
+            }
+            // Dump anything with 'Canada' in aria-label
+            System.out.println("--- Any checkbox with 'Canada' in aria-label ---");
+            for (int i = 0; i < checkboxes.size(); i++) {
                 String ariaLabel = checkboxes.get(i).getAttribute("aria-label");
-                System.out.printf("  checkbox[%d] id='%s' name='%s' value='%s' aria-label='%s'%n",
-                        i, id, name, value, ariaLabel);
+                if (ariaLabel != null && ariaLabel.toLowerCase().contains("canada")) {
+                    String id = checkboxes.get(i).getAttribute("id");
+                    System.out.printf("  checkbox[%d] id='%s' aria-label='%s'%n", i, id, ariaLabel);
+                }
             }
 
             // Look for clickable filter items (labels, spans, buttons inside accordions)
