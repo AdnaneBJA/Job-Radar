@@ -1,7 +1,7 @@
 package com.example.job_radar.scraper;
 
 import com.example.job_radar.model.JobPosting;
-import com.example.job_radar.scraper.selenium.WealthsimpleScraper;
+import com.example.job_radar.scraper.ashby.WealthsimpleScraper;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;

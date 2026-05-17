@@ -73,6 +73,24 @@ class CiscoScraperTest {
                     System.out.printf("  checkbox[%d] id='%s' aria-label='%s'%n", i, id, ariaLabel);
                 }
             }
+            // Dump experience-level checkboxes
+            System.out.println("--- experiencelevel_phs_* / experience_phs_* checkboxes ---");
+            for (int i = 0; i < checkboxes.size(); i++) {
+                String id = checkboxes.get(i).getAttribute("id");
+                if (id != null && (id.startsWith("experiencelevel_phs_") || id.startsWith("experience_phs_"))) {
+                    String ariaLabel = checkboxes.get(i).getAttribute("aria-label");
+                    System.out.printf("  checkbox[%d] id='%s' aria-label='%s'%n", i, id, ariaLabel);
+                }
+            }
+            // Dump anything with 'Intern' in aria-label
+            System.out.println("--- Any checkbox with 'Intern' in aria-label ---");
+            for (int i = 0; i < checkboxes.size(); i++) {
+                String ariaLabel = checkboxes.get(i).getAttribute("aria-label");
+                if (ariaLabel != null && ariaLabel.toLowerCase().contains("intern")) {
+                    String id = checkboxes.get(i).getAttribute("id");
+                    System.out.printf("  checkbox[%d] id='%s' aria-label='%s'%n", i, id, ariaLabel);
+                }
+            }
 
             // Look for clickable filter items (labels, spans, buttons inside accordions)
             List<WebElement> filterLabels = driver.findElements(

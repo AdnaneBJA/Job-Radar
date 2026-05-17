@@ -38,10 +38,10 @@ public class CiscoScraper extends SeleniumScraper {
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
             Thread.sleep(5000);
 
-            // 1. Expand Country or Region accordion and check "Canada"
-            expandAccordion(driver, "CountryorRegionAccordion");
+            // Expand Experience Level accordion and check "Intern"
+            expandAccordion(driver, "ExperienceLevelAccordion");
             Thread.sleep(1000);
-            clickCheckbox(driver, wait, "country_phs_Canada");
+            clickCheckbox(driver, wait, "raasJobRequisitionType_phs_Intern", "Intern");
             Thread.sleep(3000);
 
             // Scrape all pages
@@ -96,14 +96,38 @@ public class CiscoScraper extends SeleniumScraper {
         }
     }
 
-    private void clickCheckbox(WebDriver driver, WebDriverWait wait, String idPrefix) {
+    private void clickCheckbox(WebDriver driver, WebDriverWait wait, String idPrefix, String label) {
         try {
-            WebElement checkbox = wait.until(ExpectedConditions.presenceOfElementLocated(
-                    By.cssSelector("input[id^='" + idPrefix + "']")));
+            WebElement checkbox = null;
+
+            // Try ID-prefix match first
+            List<WebElement> byId = driver.findElements(
+                    By.cssSelector("input[id^='" + idPrefix + "']"));
+            if (!byId.isEmpty()) {
+                checkbox = byId.get(0);
+            } else if (label != null && !label.isEmpty()) {
+                // Fallback: aria-label exact, then partial
+                List<WebElement> byLabel = driver.findElements(
+                        By.cssSelector("input[aria-label='" + label + "']"));
+                if (byLabel.isEmpty()) {
+                    byLabel = driver.findElements(
+                            By.cssSelector("input[aria-label*='" + label + "']"));
+                }
+                if (!byLabel.isEmpty()) {
+                    checkbox = byLabel.get(0);
+                }
+            }
+
+            if (checkbox == null) {
+                // Last resort: wait for ID prefix
+                checkbox = wait.until(ExpectedConditions.presenceOfElementLocated(
+                        By.cssSelector("input[id^='" + idPrefix + "']")));
+            }
+
             ((JavascriptExecutor) driver).executeScript("arguments[0].click();", checkbox);
-            log.info("[Cisco] Checked '{}'", idPrefix);
+            log.info("[Cisco] Checked '{}' (label: '{}')", idPrefix, label);
         } catch (Exception e) {
-            log.warn("[Cisco] Could not click checkbox '{}': {}", idPrefix, e.getMessage());
+            log.warn("[Cisco] Could not click checkbox '{}' / label '{}': {}", idPrefix, label, e.getMessage());
         }
     }
 

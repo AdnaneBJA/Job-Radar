@@ -1,7 +1,7 @@
 package com.example.job_radar.scraper;
 
 import com.example.job_radar.model.JobPosting;
-import com.example.job_radar.scraper.selenium.CohereScraper;
+import com.example.job_radar.scraper.ashby.CohereScraper;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

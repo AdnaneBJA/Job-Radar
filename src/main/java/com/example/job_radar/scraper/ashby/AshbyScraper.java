@@ -1,6 +1,7 @@
-package com.example.job_radar.scraper.selenium;
+package com.example.job_radar.scraper.ashby;
 
 import com.example.job_radar.model.JobPosting;
+import com.example.job_radar.scraper.selenium.SeleniumScraper;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -8,22 +9,25 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-@Component
-public class CohereScraper extends SeleniumScraper {
+public abstract class AshbyScraper extends SeleniumScraper {
 
-    private static final Logger log = LoggerFactory.getLogger(CohereScraper.class);
+    private static final Logger log = LoggerFactory.getLogger(AshbyScraper.class);
 
-    private static final String BASE_URL = "https://jobs.ashbyhq.com/cohere?employmentType=Intern";
-    private static final String COMPANY = "Cohere";
+    protected abstract String company();
 
-    private static boolean isCanada(String location) {
+    protected abstract String baseUrl();
+
+    protected boolean accept(String title, String location) {
+        return true;
+    }
+
+    protected static boolean isCanada(String location) {
         if (location == null) return false;
         String l = location.toLowerCase();
         return l.contains("canada")
@@ -35,13 +39,13 @@ public class CohereScraper extends SeleniumScraper {
 
     @Override
     public List<JobPosting> scrape() {
+        String company = company();
         List<JobPosting> jobs = new ArrayList<>();
         WebDriver driver = createDriver();
 
         try {
-            driver.get(BASE_URL);
+            driver.get(baseUrl());
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
-
             wait.until(ExpectedConditions.presenceOfElementLocated(
                     By.cssSelector(".ashby-job-posting-brief")));
             Thread.sleep(2000);
@@ -51,9 +55,8 @@ public class CohereScraper extends SeleniumScraper {
 
             for (WebElement posting : postings) {
                 try {
-                    WebElement titleEl = posting.findElement(
-                            By.cssSelector(".ashby-job-posting-brief-title"));
-                    String title = titleEl.getText().trim();
+                    String title = posting.findElement(
+                            By.cssSelector(".ashby-job-posting-brief-title")).getText().trim();
 
                     String location = "";
                     List<WebElement> detailEls = posting.findElements(
@@ -63,24 +66,24 @@ public class CohereScraper extends SeleniumScraper {
                         if (parts.length > 1) location = parts[1].trim();
                     }
 
-                    if (title.isEmpty() || !isCanada(location)) {
+                    if (title.isEmpty() || !accept(title, location)) {
                         continue;
                     }
 
                     JobPosting job = new JobPosting();
-                    job.setCompany(COMPANY);
+                    job.setCompany(company);
                     job.setTitle(title);
                     job.setLocation(location);
                     job.setDate(LocalDate.now().toString());
                     jobs.add(job);
                 } catch (Exception e) {
-                    log.warn("[Cohere] Failed to parse a posting, skipping: {}", e.getMessage());
+                    log.warn("[{}] Failed to parse a posting, skipping: {}", company, e.getMessage());
                 }
             }
 
-            log.info("[Cohere] Scraping complete. Total jobs: {}", jobs.size());
+            log.info("[{}] Scraping complete. Total jobs: {}", company, jobs.size());
         } catch (Exception e) {
-            log.error("[Cohere] Error scraping Ashby jobs", e);
+            log.error("[{}] Error scraping Ashby jobs", company, e);
         } finally {
             driver.quit();
         }

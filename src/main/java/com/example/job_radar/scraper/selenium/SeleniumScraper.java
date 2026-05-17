@@ -22,6 +22,8 @@ public class SeleniumScraper implements JobScraper {
         options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--disable-gpu");
         options.addArguments("--window-size=1920,1080");
+        options.addArguments("--lang=en-US");
+        options.addArguments("--accept-lang=en-US,en;q=0.9");
         options.addArguments("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                 + "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
         return new ChromeDriver(options);
