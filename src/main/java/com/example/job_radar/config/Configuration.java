@@ -10,6 +10,7 @@ import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
 
 @org.springframework.context.annotation.Configuration
 @EnableAsync
@@ -29,6 +30,9 @@ public class Configuration {
         executor.setMaxPoolSize(maxPoolSize);
         executor.setQueueCapacity(queueCapacity);
         executor.setThreadNamePrefix("scraper-");
+        // Fall back to running on the caller's thread if the queue ever fills up so a
+        // run with more scrapers than slots completes instead of throwing.
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.initialize();
         return executor;
     }

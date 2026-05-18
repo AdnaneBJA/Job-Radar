@@ -23,7 +23,7 @@ public class JobScraperScheduler {
     @Autowired
     private JobScrapingService jobScrapingService;
 
-    @Scheduled(fixedDelay = 900000)
+    @Scheduled(fixedDelay = 1800000)
     public void scrapAndNotify() {
         log.info("STARTING SCRAP CYCLE");
 
