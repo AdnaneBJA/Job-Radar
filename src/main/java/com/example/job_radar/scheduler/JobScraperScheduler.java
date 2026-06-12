@@ -5,6 +5,7 @@ import com.example.job_radar.service.JobScrapingService;
 import com.example.job_radar.service.NotificationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Component
+@Profile("!test")  // Don't run the live scrape/email loop during tests.
 public class JobScraperScheduler {
 
     @Autowired
