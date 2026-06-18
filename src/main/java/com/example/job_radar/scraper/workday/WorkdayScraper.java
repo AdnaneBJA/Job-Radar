@@ -2,23 +2,45 @@ package com.example.job_radar.scraper.workday;
 
 import com.example.job_radar.model.JobPosting;
 import com.example.job_radar.scraper.JobScraper;
-import org.openqa.selenium.By;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URI;
+import java.net.URLDecoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
+/**
+ * Base scraper for any Workday-hosted careers site (*.myworkdayjobs.com).
+ *
+ * <p>Rather than driving headless Chrome against the JS-rendered page (fragile emotion-hashed
+ * CSS classes, one Chrome process per company), this hits Workday's public CXS JSON endpoint
+ * that the page itself calls: {@code POST /wday/cxs/{tenant}/{site}/jobs}. Subclasses only
+ * provide the normal public careers URL via {@link #getBaseUrl()}; the tenant, site, and
+ * applied facets are derived from it.
+ */
 public abstract class WorkdayScraper implements JobScraper {
 
     private static final Logger log = LoggerFactory.getLogger(WorkdayScraper.class);
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final HttpClient HTTP = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(15))
+            .build();
+
+    // Workday caps page size at 20.
+    private static final int PAGE_SIZE = 20;
+    private static final String USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    + "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
     protected abstract String getBaseUrl();
 
@@ -31,128 +53,117 @@ public abstract class WorkdayScraper implements JobScraper {
     @Override
     public List<JobPosting> scrape() {
         List<JobPosting> jobs = new ArrayList<>();
-        WebDriver driver = createDriver();
-
         try {
-            driver.get(getBaseUrl());
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
+            URI base = URI.create(getBaseUrl());
+            String endpoint = cxsEndpoint(base);
+            String facets = facetsJson(base.getRawQuery());
 
-            // Wait for the job list to load, retry once with page refresh if needed
-            try {
-                wait.until(ExpectedConditions.presenceOfElementLocated(
-                        By.cssSelector("[data-automation-id='jobResults']")));
-            } catch (Exception e) {
-                log.warn("[{}] First load attempt failed, refreshing page...", getCompanyName());
-                driver.navigate().refresh();
-                wait.until(ExpectedConditions.presenceOfElementLocated(
-                        By.cssSelector("[data-automation-id='jobResults']")));
-            }
+            int offset = 0;
+            int total = Integer.MAX_VALUE;
+            while (offset < total) {
+                String body = "{\"appliedFacets\":" + facets
+                        + ",\"limit\":" + PAGE_SIZE
+                        + ",\"offset\":" + offset
+                        + ",\"searchText\":\"\"}";
 
-            // Allow extra time for all items to render
-            Thread.sleep(2000);
+                HttpRequest request = HttpRequest.newBuilder(URI.create(endpoint))
+                        .timeout(Duration.ofSeconds(20))
+                        .header("Content-Type", "application/json")
+                        .header("Accept", "application/json")
+                        .header("User-Agent", USER_AGENT)
+                        .POST(HttpRequest.BodyPublishers.ofString(body))
+                        .build();
 
-            while (true) {
-                List<JobPosting> pageJobs = scrapeCurrentPage(driver);
-                jobs.addAll(pageJobs);
-                log.info("[{}] Scraped {} jobs from current page (total so far: {})",
-                        getCompanyName(), pageJobs.size(), jobs.size());
-
-                if (!goToNextPage(driver, wait)) {
+                HttpResponse<String> response =
+                        HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() != 200) {
+                    log.error("[{}] Workday API returned HTTP {} for {}",
+                            getCompanyName(), response.statusCode(), endpoint);
                     break;
                 }
+
+                JsonNode root = MAPPER.readTree(response.body());
+                total = root.path("total").asInt(0);
+
+                List<JobPosting> pageJobs = mapPostings(root, getCompanyName());
+                if (pageJobs.isEmpty()) {
+                    break;
+                }
+                for (JobPosting job : pageJobs) {
+                    if (!job.getTitle().isEmpty() && shouldInclude(job)) {
+                        jobs.add(job);
+                    }
+                }
+                offset += PAGE_SIZE;
             }
 
             log.info("[{}] Scraping complete. Total jobs: {}", getCompanyName(), jobs.size());
         } catch (Exception e) {
             log.error("[{}] Error scraping Workday jobs", getCompanyName(), e);
-        } finally {
-            driver.quit();
         }
-
         return jobs;
     }
 
-    private List<JobPosting> scrapeCurrentPage(WebDriver driver) {
-        List<JobPosting> jobs = new ArrayList<>();
+    /** Builds the Workday CXS jobs endpoint from a public careers URL. */
+    static String cxsEndpoint(URI careersUrl) {
+        String host = careersUrl.getHost();
+        String tenant = host.substring(0, host.indexOf('.'));
+        String site = lastPathSegment(careersUrl.getPath());
+        return "https://" + host + "/wday/cxs/" + tenant + "/" + site + "/jobs";
+    }
 
-        // Get all the job list items (parent containers)
-        List<WebElement> jobListItems = driver.findElements(
-                By.cssSelector("li[class*='css-1q2dra3']"));
-
-        // Fallback: get list items from the job results section
-        if (jobListItems.isEmpty()) {
-            jobListItems = driver.findElements(
-                    By.cssSelector("[data-automation-id='jobResults'] > ul > li"));
+    private static String lastPathSegment(String path) {
+        if (path == null) {
+            return "";
         }
-
-        for (WebElement listItem : jobListItems) {
-            try {
-                JobPosting job = new JobPosting();
-                job.setCompany(getCompanyName());
-
-                // Extract job title
-                WebElement titleElement = listItem.findElement(
-                        By.cssSelector("a[data-automation-id='jobTitle']"));
-                job.setTitle(titleElement.getText().trim());
-
-                // Extract location and posted date from dd elements
-                List<WebElement> ddElements = listItem.findElements(By.cssSelector("dd"));
-
-                if (ddElements.size() >= 2) {
-                    job.setLocation(ddElements.get(0).getText().trim());
-                    job.setDate(ddElements.get(1).getText().trim());
-                } else if (ddElements.size() == 1) {
-                    job.setLocation(ddElements.get(0).getText().trim());
-                    job.setDate("");
-                } else {
-                    List<WebElement> dlItems = listItem.findElements(By.cssSelector("dl"));
-                    String fullText = dlItems.isEmpty() ? listItem.getText() : dlItems.get(0).getText();
-                    job.setLocation(fullText);
-                    job.setDate("");
-                }
-
-                if (!job.getTitle().isEmpty() && shouldInclude(job)) {
-                    jobs.add(job);
-                }
-            } catch (Exception e) {
-                log.warn("[{}] Failed to parse a job card, skipping: {}", getCompanyName(), e.getMessage());
+        String[] parts = path.split("/");
+        for (int i = parts.length - 1; i >= 0; i--) {
+            if (!parts[i].isEmpty()) {
+                return parts[i];
             }
         }
-
-        return jobs;
+        return "";
     }
 
-    private boolean goToNextPage(WebDriver driver, WebDriverWait wait) {
+    /**
+     * Converts a careers-URL query string into a Workday {@code appliedFacets} JSON object,
+     * grouping repeated keys into arrays (e.g. {@code jobFamilyGroup=A&jobFamilyGroup=B}).
+     */
+    static String facetsJson(String rawQuery) {
+        Map<String, List<String>> facets = new LinkedHashMap<>();
+        if (rawQuery != null && !rawQuery.isBlank()) {
+            for (String pair : rawQuery.split("&")) {
+                int eq = pair.indexOf('=');
+                if (eq <= 0) {
+                    continue;
+                }
+                String key = URLDecoder.decode(pair.substring(0, eq), StandardCharsets.UTF_8);
+                String value = URLDecoder.decode(pair.substring(eq + 1), StandardCharsets.UTF_8);
+                facets.computeIfAbsent(key, k -> new ArrayList<>()).add(value);
+            }
+        }
         try {
-            WebElement nextButton = driver.findElement(
-                    By.cssSelector("button[aria-label='next']"));
-
-            if (!nextButton.isEnabled() || "true".equals(nextButton.getAttribute("aria-disabled"))) {
-                return false;
-            }
-
-            nextButton.click();
-
-            Thread.sleep(3000);
-            wait.until(ExpectedConditions.presenceOfElementLocated(
-                    By.cssSelector("a[data-automation-id='jobTitle']")));
-
-            return true;
+            return MAPPER.writeValueAsString(facets);
         } catch (Exception e) {
-            log.info("[{}] No more pages to navigate", getCompanyName());
-            return false;
+            return "{}";
         }
     }
 
-    private WebDriver createDriver() {
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless=new");
-        options.addArguments("--no-sandbox");
-        options.addArguments("--disable-dev-shm-usage");
-        options.addArguments("--disable-gpu");
-        options.addArguments("--window-size=1920,1080");
-        options.addArguments("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                + "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
-        return new ChromeDriver(options);
+    /** Maps a Workday CXS response into job postings (without per-company filtering). */
+    static List<JobPosting> mapPostings(JsonNode root, String company) {
+        List<JobPosting> jobs = new ArrayList<>();
+        JsonNode postings = root.path("jobPostings");
+        if (!postings.isArray()) {
+            return jobs;
+        }
+        for (JsonNode posting : postings) {
+            JobPosting job = new JobPosting();
+            job.setCompany(company);
+            job.setTitle(posting.path("title").asText("").trim());
+            job.setLocation(posting.path("locationsText").asText("").trim());
+            job.setDate(posting.path("postedOn").asText("").trim());
+            jobs.add(job);
+        }
+        return jobs;
     }
 }
