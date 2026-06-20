@@ -24,14 +24,11 @@ public class MetaScraper extends SeleniumScraper {
 
     private static final Logger log = LoggerFactory.getLogger(MetaScraper.class);
 
+    // The old jobsearch URL pinned specific teams[] values that Meta has since renamed, so the
+    // filter matched nothing and the wait timed out. roles[0]=Internship is the stable filter;
+    // we keep all internship teams and let the radar surface them.
     private static final String BASE_URL =
-            "https://www.metacareers.com/jobsearch"
-                    + "?roles[0]=Internship"
-                    + "&teams[0]=Software%20Engineering"
-                    + "&teams[1]=Product%20Management"
-                    + "&teams[2]=Enterprise%20Engineering"
-                    + "&teams[3]=Internship%20-%20Business"
-                    + "&teams[4]=Infrastructure";
+            "https://www.metacareers.com/jobs?roles[0]=Internship";
 
     private static final String COMPANY = "Meta";
 

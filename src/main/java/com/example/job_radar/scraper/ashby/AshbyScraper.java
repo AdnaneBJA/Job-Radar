@@ -3,6 +3,7 @@ package com.example.job_radar.scraper.ashby;
 import com.example.job_radar.model.JobPosting;
 import com.example.job_radar.scraper.selenium.SeleniumScraper;
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -46,8 +47,16 @@ public abstract class AshbyScraper extends SeleniumScraper {
         try {
             driver.get(baseUrl());
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(15));
-            wait.until(ExpectedConditions.presenceOfElementLocated(
-                    By.cssSelector(".ashby-job-posting-brief")));
+            try {
+                wait.until(ExpectedConditions.presenceOfElementLocated(
+                        By.cssSelector(".ashby-job-posting-brief")));
+            } catch (TimeoutException te) {
+                // No posting briefs rendered — the board has no roles matching the filter
+                // (e.g. an intern-only board with no current intern openings). That's a clean
+                // zero, not an error.
+                log.info("[{}] No postings matched the filter (0 jobs).", company);
+                return jobs;
+            }
             Thread.sleep(2000);
 
             List<WebElement> postings = driver.findElements(

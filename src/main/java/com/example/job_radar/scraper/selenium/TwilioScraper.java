@@ -34,13 +34,24 @@ public class TwilioScraper extends SeleniumScraper {
 
         try {
             driver.get(BASE_URL);
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(25));
-            wait.until(ExpectedConditions.presenceOfElementLocated(
-                    By.cssSelector("a[href*='/careers/job/']")));
-            Thread.sleep(2000);
-
-            List<WebElement> links = driver.findElements(
-                    By.cssSelector("a[href*='/careers/job/']"));
+            // Twilio migrated to the Eightfold AI platform. It loads the search shell but
+            // renders zero job cards under headless Chrome (results come from a bot-gated XHR;
+            // the public /api/apply/v2/jobs endpoint hard-403s server-side too). Wait briefly
+            // for any position card and degrade quietly instead of hanging the batch / spewing
+            // a 25s timeout stack trace.
+            // TODO: revisit via the Eightfold API with proper anti-bot handling, or a non-headless run.
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(12));
+            List<WebElement> links;
+            try {
+                wait.until(ExpectedConditions.presenceOfElementLocated(
+                        By.cssSelector("a.position-card, [data-test-id='position-card'], a[href*='/careers/job/']")));
+                Thread.sleep(2000);
+                links = driver.findElements(
+                        By.cssSelector("a.position-card, [data-test-id='position-card'], a[href*='/careers/job/']"));
+            } catch (org.openqa.selenium.TimeoutException te) {
+                log.info("[Twilio] No job cards rendered (Eightfold gates headless results); returning 0.");
+                return jobs;
+            }
 
             Set<String> seenHrefs = new HashSet<>();
             for (WebElement link : links) {
@@ -51,26 +62,11 @@ public class TwilioScraper extends SeleniumScraper {
                     String text = link.getText().trim();
                     if (text.isEmpty()) continue;
 
-                    // Each link's textContent is the full card: title, department,
-                    // location, "Remote", "Posted X ago" — all newline-separated.
                     String[] lines = text.split("\\r?\\n");
                     String title = lines[0].trim();
-                    String department = lines.length > 1 ? lines[1].trim() : "";
+                    if (title.isEmpty()) continue;
 
-                    // The page filters to a single PID but also returns "you might like"
-                    // suggestions in the same DOM. Keep only the intern set (department
-                    // == "Students") which is what the filtered URL is meant to surface.
-                    if (!"Students".equalsIgnoreCase(department)) continue;
-
-                    String location = "";
-                    for (int i = 1; i < lines.length; i++) {
-                        String l = lines[i].trim();
-                        if (l.isEmpty()) continue;
-                        if (l.toLowerCase().startsWith("posted ")) break;
-                        if (l.equalsIgnoreCase("Remote") || l.equalsIgnoreCase("Students")) continue;
-                        location = l;
-                        break;
-                    }
+                    String location = lines.length > 1 ? lines[1].trim() : "";
 
                     JobPosting job = new JobPosting();
                     job.setCompany(COMPANY);

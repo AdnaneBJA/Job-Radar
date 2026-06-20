@@ -33,13 +33,23 @@ public class GitHubScraper extends SeleniumScraper {
 
         try {
             driver.get(BASE_URL);
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
-            wait.until(ExpectedConditions.presenceOfElementLocated(
-                    By.cssSelector("a[href*='/careers-home/jobs/']")));
-            Thread.sleep(2000);
-
-            List<WebElement> links = driver.findElements(
-                    By.cssSelector("a[href*='/careers-home/jobs/']"));
+            // github.careers is now only a hub: it lists no jobs itself and links out to iCIMS
+            // login portals (careers-githubinc.icims.com), which redirect/refuse both headless
+            // browsers and server fetches. Wait briefly for real job links and degrade quietly
+            // rather than hanging the batch with a 20s timeout stack trace.
+            // TODO: revisit via the iCIMS portal feed (needs the portal's hashed id / session).
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(12));
+            List<WebElement> links;
+            try {
+                wait.until(ExpectedConditions.presenceOfElementLocated(
+                        By.cssSelector("a[href*='/careers-home/jobs/']")));
+                Thread.sleep(2000);
+                links = driver.findElements(
+                        By.cssSelector("a[href*='/careers-home/jobs/']"));
+            } catch (org.openqa.selenium.TimeoutException te) {
+                log.info("[GitHub] No job listings on the careers hub (jobs moved behind iCIMS portals); returning 0.");
+                return jobs;
+            }
 
             for (WebElement link : links) {
                 try {
